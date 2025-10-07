@@ -266,8 +266,8 @@ async function loadAllData() {
             fetch('/api/user_redpacket_ranking').then(r => r.json())
         ]);
         
-        // Update charts
-        updateDailyTrendChart(dailyData);
+        // Update charts - use redpacket data for daily trend to ensure consistency
+        updateDailyTrendChart(dailyData, redpacketData);
         updateHourlyHeatmap(hourlyData);
         updateTopUsersChart(topUsersData);
         updateMessageTypesProportionBar(messageTypesData);
@@ -293,7 +293,15 @@ function updateSummaryCards(data) {
 }
 
 // Update daily trend chart (without range controls)
-function updateDailyTrendChart(data) {
+function updateDailyTrendChart(dailyData, redpacketData) {
+    // Use filtered redpacket data from /api/redpackets for consistency
+    const redpacketAmounts = {};
+    if (redpacketData && redpacketData.daily_summary) {
+        redpacketData.daily_summary.forEach(item => {
+            redpacketAmounts[item.date] = item.total_amount;
+        });
+    }
+    
     const option = {
         title: {
             text: '消息数量与红包金额趋势',
@@ -317,7 +325,7 @@ function updateDailyTrendChart(data) {
         },
         xAxis: {
             type: 'category',
-            data: data.map(d => d.date),
+            data: dailyData.map(d => d.date),
             axisLabel: {
                 rotate: 45
             }
@@ -345,7 +353,7 @@ function updateDailyTrendChart(data) {
             {
                 name: '消息数量',
                 type: 'line',
-                data: data.map(d => d.message_count),
+                data: dailyData.map(d => d.message_count),
                 smooth: true,
                 itemStyle: {
                     color: '#3b82f6'
@@ -353,13 +361,9 @@ function updateDailyTrendChart(data) {
             },
             {
                 name: '每日红包总额',
-                type: 'line',
+                type: 'bar',
                 yAxisIndex: 1,
-                data: data.map(d => d.redpacket_amount),
-                smooth: true,
-                areaStyle: {
-                    opacity: 0.3
-                },
+                data: dailyData.map(d => redpacketAmounts[d.date] || 0),
                 itemStyle: {
                     color: '#ef4444'
                 }
@@ -685,7 +689,7 @@ function createProperBins(data, maxLimit = 300) {
     return { labels, counts };
 }
 
-// Update redpacket chart (daily summary bar chart with cumulative line)
+// Update redpacket chart (only daily total amount)
 function updateRedpacketChart(data) {
     if (!data.daily_summary || data.daily_summary.length === 0) {
         const option = {
@@ -732,7 +736,7 @@ function updateRedpacketChart(data) {
             }
         },
         legend: {
-            data: ['每日红包总额', '累计红包金额', '红包个数'],
+            data: ['每日红包总额'],
             bottom: 0
         },
         grid: {
@@ -748,18 +752,10 @@ function updateRedpacketChart(data) {
                 rotate: 45
             }
         },
-        yAxis: [
-            {
-                type: 'value',
-                name: '红包金额 (¥)',
-                position: 'left'
-            },
-            {
-                type: 'value',
-                name: '红包个数',
-                position: 'right'
-            }
-        ],
+        yAxis: {
+            type: 'value',
+            name: '红包金额 (¥)'
+        },
         series: [
             {
                 name: '每日红包总额',
@@ -767,26 +763,6 @@ function updateRedpacketChart(data) {
                 data: data.daily_summary.map(d => d.total_amount),
                 itemStyle: {
                     color: '#ef4444'
-                }
-            },
-            {
-                name: '累计红包金额',
-                type: 'line',
-                yAxisIndex: 0,
-                data: data.cumulative.map(d => d.cumulative_amount),
-                smooth: true,
-                itemStyle: {
-                    color: '#dc2626'
-                }
-            },
-            {
-                name: '红包个数',
-                type: 'line',
-                yAxisIndex: 1,
-                data: data.daily_summary.map(d => d.count),
-                smooth: true,
-                itemStyle: {
-                    color: '#f59e0b'
                 }
             }
         ]
