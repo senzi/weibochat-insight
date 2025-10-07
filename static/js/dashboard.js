@@ -599,18 +599,24 @@ function updateTokenHistogramChart(data) {
         },
         grid: {
             left: '3%',
-            right: '4%',
-            bottom: '15%',
+            right: '8%',
+            bottom: '20%',
             containLabel: true
         },
         xAxis: {
             type: 'category',
             data: contentBins.labels,
-            name: '长度区间'
+            name: '长度区间',
+            axisLabel: {
+                rotate: 45,
+                fontSize: 10
+            }
         },
         yAxis: {
             type: 'value',
-            name: '消息数量'
+            name: '消息数量',
+            nameLocation: 'middle',
+            nameGap: 40
         },
         series: [
             {
@@ -781,13 +787,15 @@ function updateUserRedpacketChart(data) {
             },
             grid: {
                 left: '3%',
-                right: '4%',
-                bottom: '3%',
+                right: '12%',
+                bottom: '8%',
                 containLabel: true
             },
             xAxis: {
                 type: 'value',
-                name: '累计红包金额 (¥)'
+                name: '累计红包金额 (¥)',
+                nameLocation: 'middle',
+                nameGap: 35
             },
             yAxis: {
                 type: 'category',
@@ -823,21 +831,25 @@ function updateUserRedpacketChart(data) {
         },
         grid: {
             left: '3%',
-            right: '10%',
-            bottom: '3%',
+            right: '15%',
+            bottom: '8%',
             containLabel: true
         },
         xAxis: {
             type: 'value',
-            name: '累计红包金额 (¥)'
+            name: '累计红包金额 (¥)',
+            nameLocation: 'middle',
+            nameGap: 35
         },
         yAxis: {
             type: 'category',
             data: data.slice(0, 20).map(d => d.screen_name || d.from_uid).reverse(),
             axisLabel: {
                 formatter: function(value) {
-                    return value; // Don't truncate usernames
-                }
+                    // Truncate long usernames to prevent overflow
+                    return value.length > 8 ? value.substring(0, 8) + '...' : value;
+                },
+                fontSize: 10
             }
         },
         series: [{
