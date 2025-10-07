@@ -142,12 +142,16 @@ def api_select_files():
 
 @app.route('/api/summary')
 def api_summary():
-    """Return overall statistics"""
+    """Return overall statistics (filtering out redpacket amounts > 50)"""
     def compute():
         df = data_cache['df']
         total_messages = len(df)
         total_users = df['from_uid'].nunique()
-        total_redpacket_amount = df[df['is_redpacket']]['redpacket_amount'].sum()
+        
+        # Filter out redpacket amounts greater than 50 for total calculation
+        valid_redpackets = df[(df['is_redpacket']) & (df['redpacket_amount'] <= 50)]
+        total_redpacket_amount = valid_redpackets['redpacket_amount'].sum()
+        
         avg_token_length = df[df['is_text']]['token_count'].mean()
         avg_content_length = df[df['is_text']]['content_len'].mean()
         
@@ -236,7 +240,7 @@ def api_message_types():
 
 @app.route('/api/token_histogram')
 def api_token_histogram():
-    """Return token length distribution with both content_len and token_count"""
+    """Return token length distribution with both content_len and token_count (limit to 300)"""
     def compute():
         df = data_cache['df']
         text_messages = df[df['is_text']]
@@ -244,37 +248,67 @@ def api_token_histogram():
         if len(text_messages) == 0:
             return {'content_len': [], 'token_count': []}
         
-        # Content length histogram
+        # Content length histogram - limit to 300, with 300+ category
         content_lengths = text_messages['content_len'].values
-        content_bins = list(range(0, int(max(content_lengths)) + 10, 10))
+        max_content = min(int(max(content_lengths)), 300)
+        
+        # Create bins up to 300, with last bin being 300+
+        content_bins = list(range(0, max_content + 10, 10))
+        if max_content < 300:
+            content_bins.append(300)  # Add 300 as upper bound
+            
         content_hist, _ = pd.cut(content_lengths, bins=content_bins, right=False, retbins=True)
         content_hist_counts = content_hist.value_counts().sort_index()
         
         content_result = []
         for interval, count in content_hist_counts.items():
-            content_result.append({
-                'range': str(interval),
-                'count': int(count),
-                'min': int(interval.left),
-                'max': int(interval.right)
-            })
-        
-        # Token count histogram
-        token_messages = text_messages[text_messages['token_count'].notna()]
-        if len(token_messages) > 0:
-            token_counts = token_messages['token_count'].values
-            token_bins = list(range(0, int(max(token_counts)) + 10, 10))
-            token_hist, _ = pd.cut(token_counts, bins=token_bins, right=False, retbins=True)
-            token_hist_counts = token_hist.value_counts().sort_index()
-            
-            token_result = []
-            for interval, count in token_hist_counts.items():
-                token_result.append({
+            # Handle the last interval (300+)
+            if interval.right >= 300:
+                content_result.append({
+                    'range': '300+',
+                    'count': int(count),
+                    'min': 300,
+                    'max': int(max(content_lengths))
+                })
+            else:
+                content_result.append({
                     'range': str(interval),
                     'count': int(count),
                     'min': int(interval.left),
                     'max': int(interval.right)
                 })
+        
+        # Token count histogram - also limit to 300
+        token_messages = text_messages[text_messages['token_count'].notna()]
+        if len(token_messages) > 0:
+            token_counts = token_messages['token_count'].values
+            max_token = min(int(max(token_counts)), 300)
+            
+            # Create bins up to 300, with last bin being 300+
+            token_bins = list(range(0, max_token + 10, 10))
+            if max_token < 300:
+                token_bins.append(300)  # Add 300 as upper bound
+                
+            token_hist, _ = pd.cut(token_counts, bins=token_bins, right=False, retbins=True)
+            token_hist_counts = token_hist.value_counts().sort_index()
+            
+            token_result = []
+            for interval, count in token_hist_counts.items():
+                # Handle the last interval (300+)
+                if interval.right >= 300:
+                    token_result.append({
+                        'range': '300+',
+                        'count': int(count),
+                        'min': 300,
+                        'max': int(max(token_counts))
+                    })
+                else:
+                    token_result.append({
+                        'range': str(interval),
+                        'count': int(count),
+                        'min': int(interval.left),
+                        'max': int(interval.right)
+                    })
         else:
             token_result = []
         
@@ -288,7 +322,7 @@ def api_token_histogram():
 
 @app.route('/api/redpackets')
 def api_redpackets():
-    """Return redpacket statistics over time (filtering out amounts > 50)"""
+    """Return daily redpacket summary statistics (filtering out amounts > 50)"""
     def compute():
         df = data_cache['df']
         redpacket_data = df[df['is_redpacket']].copy()
@@ -297,16 +331,16 @@ def api_redpackets():
         redpacket_data = redpacket_data[redpacket_data['redpacket_amount'] <= 50]
         
         if len(redpacket_data) == 0:
-            return {'scatter': [], 'cumulative': []}
+            return {'daily_summary': [], 'scatter': [], 'cumulative': []}
         
-        # Group by date
-        daily_redpackets = redpacket_data.groupby('date').agg({
-            'redpacket_amount': 'sum'
+        # Group by date for daily summary (bar chart)
+        daily_summary = redpacket_data.groupby('date').agg({
+            'redpacket_amount': ['sum', 'count', 'mean']
         }).reset_index()
+        daily_summary.columns = ['date', 'total_amount', 'count', 'avg_amount']
+        daily_summary['date'] = daily_summary['date'].astype(str)
         
-        daily_redpackets['date'] = daily_redpackets['date'].astype(str)
-        
-        # Create scatter data points
+        # Create scatter data points (for reference)
         scatter_data = []
         for _, row in redpacket_data.iterrows():
             scatter_data.append([
@@ -317,20 +351,49 @@ def api_redpackets():
         # Create cumulative data
         cumulative_data = []
         cumulative_amount = 0
-        for _, row in daily_redpackets.iterrows():
-            cumulative_amount += float(row['redpacket_amount'] or 0)
+        for _, row in daily_summary.iterrows():
+            cumulative_amount += float(row['total_amount'] or 0)
             cumulative_data.append({
                 'date': row['date'],
                 'cumulative_amount': cumulative_amount
             })
         
         return {
+            'daily_summary': daily_summary.to_dict('records'),
             'scatter': scatter_data,
             'cumulative': cumulative_data
         }
     
     file_suffix = "_".join(selected_files) if selected_files else "all"
     return jsonify(get_or_compute_cache('redpackets', compute, file_suffix))
+
+@app.route('/api/user_redpacket_ranking')
+def api_user_redpacket_ranking():
+    """Return users ranked by cumulative redpacket amounts received (filtering out amounts > 50)"""
+    def compute():
+        df = data_cache['df']
+        redpacket_data = df[df['is_redpacket']].copy()
+        
+        # Filter out redpacket amounts greater than 50
+        redpacket_data = redpacket_data[redpacket_data['redpacket_amount'] <= 50]
+        
+        if len(redpacket_data) == 0:
+            return []
+        
+        # Group by user and sum their redpacket amounts
+        user_redpackets = redpacket_data.groupby(['from_uid', 'screen_name']).agg({
+            'redpacket_amount': 'sum',
+            'id': 'count'  # count of redpackets received
+        }).reset_index()
+        user_redpackets.columns = ['from_uid', 'screen_name', 'total_redpacket_amount', 'redpacket_count']
+        
+        # Sort by total amount descending and take top 20
+        user_redpackets = user_redpackets.sort_values('total_redpacket_amount', ascending=False).head(20)
+        
+        return user_redpackets.to_dict('records')
+    
+    file_suffix = "_".join(selected_files) if selected_files else "all"
+    return jsonify(get_or_compute_cache('user_redpacket_ranking', compute, file_suffix))
 
 @app.route('/api/source_ratio')
 def api_source_ratio():

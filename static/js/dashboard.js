@@ -52,6 +52,9 @@ function initCharts() {
     // Redpacket chart
     charts.redpacket = echarts.init(document.getElementById('redpacket-chart'));
     
+    // User redpacket ranking chart
+    charts.userRedpacket = echarts.init(document.getElementById('user-redpacket-chart'));
+    
     // User trend modal chart
     userTrendChart = echarts.init(document.getElementById('user-trend-chart'));
     
@@ -250,7 +253,8 @@ async function loadAllData() {
             messageTypesData,
             sourceRatioData,
             tokenHistogramData,
-            redpacketData
+            redpacketData,
+            userRedpacketData
         ] = await Promise.all([
             fetch('/api/daily').then(r => r.json()),
             fetch('/api/hourly_heatmap').then(r => r.json()),
@@ -258,7 +262,8 @@ async function loadAllData() {
             fetch('/api/message_types').then(r => r.json()),
             fetch('/api/source_ratio').then(r => r.json()),
             fetch('/api/token_histogram').then(r => r.json()),
-            fetch('/api/redpackets').then(r => r.json())
+            fetch('/api/redpackets').then(r => r.json()),
+            fetch('/api/user_redpacket_ranking').then(r => r.json())
         ]);
         
         // Update charts
@@ -269,6 +274,7 @@ async function loadAllData() {
         updateSourceRatioChart(sourceRatioData);
         updateTokenHistogramChart(tokenHistogramData);
         updateRedpacketChart(redpacketData);
+        updateUserRedpacketChart(userRedpacketData);
         updateMessageTypesTable(messageTypesData);
         
     } catch (error) {
@@ -300,7 +306,7 @@ function updateDailyTrendChart(data) {
             }
         },
         legend: {
-            data: ['消息数量', '红包金额'],
+            data: ['消息数量', '每日红包总额'],
             bottom: 0
         },
         grid: {
@@ -346,7 +352,7 @@ function updateDailyTrendChart(data) {
                 }
             },
             {
-                name: '红包金额',
+                name: '每日红包总额',
                 type: 'line',
                 yAxisIndex: 1,
                 data: data.map(d => d.redpacket_amount),
@@ -563,18 +569,14 @@ function updateSourceRatioChart(data) {
     charts.sourceRatio.setOption(option);
 }
 
-// Update token histogram chart with adaptive y-axis
+// Update token histogram chart with proper bin handling (limit to 300)
 function updateTokenHistogramChart(data) {
     const contentData = data.content_len;
     const tokenData = data.token_count;
     
-    // Find max values for adaptive scaling
-    const maxContentCount = contentData.length > 0 ? Math.max(...contentData.map(d => d.count)) : 1;
-    const maxTokenCount = tokenData.length > 0 ? Math.max(...tokenData.map(d => d.count)) : 1;
-    const maxCount = Math.max(maxContentCount, maxTokenCount);
-    
-    // Calculate appropriate y-axis max with some padding
-    const yAxisMax = Math.ceil(maxCount * 1.2);
+    // Create proper bins and ensure no gaps, limit to 300
+    const contentBins = createProperBins(contentData, 300);
+    const tokenBins = createProperBins(tokenData, 300);
     
     const option = {
         title: {
@@ -599,22 +601,18 @@ function updateTokenHistogramChart(data) {
         },
         xAxis: {
             type: 'category',
-            data: getLogScaleBins(contentData, tokenData),
-            name: '长度区间 (对数尺度)'
+            data: contentBins.labels,
+            name: '长度区间'
         },
         yAxis: {
             type: 'value',
-            name: '消息数量',
-            type: 'log',
-            logBase: 10,
-            min: 1, // Set minimum to 1 for log scale
-            max: Math.max(10, yAxisMax) // Ensure at least 10 for visibility
+            name: '消息数量'
         },
         series: [
             {
                 name: '字符长度',
                 type: 'bar',
-                data: getLogScaleData(contentData),
+                data: contentBins.counts,
                 itemStyle: {
                     color: '#3b82f6'
                 }
@@ -622,7 +620,7 @@ function updateTokenHistogramChart(data) {
             {
                 name: 'Token数量',
                 type: 'bar',
-                data: getLogScaleData(tokenData),
+                data: tokenBins.counts,
                 itemStyle: {
                     color: '#10b981'
                 }
@@ -633,51 +631,98 @@ function updateTokenHistogramChart(data) {
     charts.tokenHistogram.setOption(option);
 }
 
-// Helper function to create log scale bins
-function getLogScaleBins(contentData, tokenData) {
-    const maxContent = contentData.length > 0 ? Math.max(...contentData.map(d => d.max)) : 100;
-    const maxToken = tokenData.length > 0 ? Math.max(...tokenData.map(d => d.max)) : 100;
-    const maxVal = Math.max(maxContent, maxToken);
-    
-    // Create log scale bins
-    const bins = [];
-    let current = 1;
-    while (current < maxVal) {
-        bins.push(`${current}-${current * 2}`);
-        current *= 2;
+// Helper function to create proper bins without gaps, with max limit
+function createProperBins(data, maxLimit = 300) {
+    if (data.length === 0) {
+        return { labels: [], counts: [] };
     }
-    return bins;
-}
-
-// Helper function to aggregate data into log scale bins
-function getLogScaleData(data) {
-    if (data.length === 0) return [];
     
-    const result = [];
-    let current = 1;
-    let dataIndex = 0;
+    // Find the range, but limit to maxLimit
+    const minVal = Math.min(...data.map(d => d.min));
+    const maxVal = Math.min(Math.max(...data.map(d => d.max)), maxLimit);
     
-    while (current < 10000 && dataIndex < data.length) { // reasonable upper limit
-        let count = 0;
-        const next = current * 2;
+    // Create bins with proper ranges
+    const binSize = 10;
+    const bins = [];
+    const counts = [];
+    const labels = [];
+    
+    for (let start = 0; start < maxVal; start += binSize) {
+        const end = Math.min(start + binSize, maxLimit);
+        const label = start === 0 && end >= maxLimit ? `0-${maxLimit}` : 
+                     end >= maxLimit ? `${start}-${maxLimit}+` : `${start}-${end}`;
         
-        while (dataIndex < data.length && data[dataIndex].min < next) {
-            count += data[dataIndex].count;
-            dataIndex++;
+        // Find data that falls in this range
+        let count = 0;
+        for (let item of data) {
+            if (item.min >= start && (item.min < end || (end >= maxLimit && item.min >= maxLimit))) {
+                count += item.count;
+            }
         }
         
-        result.push(count);
-        current = next;
+        bins.push({ start, end, count });
+        counts.push(count);
+        labels.push(label);
+        
+        if (end >= maxLimit) break;
     }
     
-    return result;
+    // Add 300+ category if there are values above 300
+    const maxOriginal = Math.max(...data.map(d => d.max));
+    if (maxOriginal > maxLimit) {
+        let countAboveLimit = 0;
+        for (let item of data) {
+            if (item.min >= maxLimit) {
+                countAboveLimit += item.count;
+            }
+        }
+        if (countAboveLimit > 0) {
+            counts.push(countAboveLimit);
+            labels.push(`${maxLimit}+`);
+        }
+    }
+    
+    return { labels, counts };
 }
 
-// Update redpacket chart (with filtered data)
+// Update redpacket chart (daily summary bar chart with cumulative line)
 function updateRedpacketChart(data) {
+    if (!data.daily_summary || data.daily_summary.length === 0) {
+        const option = {
+            title: {
+                text: '每日红包统计 (无数据)',
+                left: 'center'
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                data: []
+            },
+            yAxis: {
+                type: 'value',
+                name: '红包金额 (¥)'
+            },
+            series: [{
+                name: '每日红包总额',
+                type: 'bar',
+                data: [],
+                itemStyle: {
+                    color: '#ef4444'
+                }
+            }]
+        };
+        charts.redpacket.setOption(option);
+        return;
+    }
+    
     const option = {
         title: {
-            text: '红包统计 (过滤大于50元的红包)',
+            text: '每日红包统计 (过滤大于50元的红包)',
             left: 'center'
         },
         tooltip: {
@@ -687,7 +732,7 @@ function updateRedpacketChart(data) {
             }
         },
         legend: {
-            data: ['红包金额', '累计金额'],
+            data: ['每日红包总额', '累计红包金额', '红包个数'],
             bottom: 0
         },
         grid: {
@@ -698,7 +743,7 @@ function updateRedpacketChart(data) {
         },
         xAxis: {
             type: 'category',
-            data: data.cumulative.map(d => d.date),
+            data: data.daily_summary.map(d => d.date),
             axisLabel: {
                 rotate: 45
             }
@@ -711,34 +756,128 @@ function updateRedpacketChart(data) {
             },
             {
                 type: 'value',
-                name: '累计金额 (¥)',
+                name: '红包个数',
                 position: 'right'
             }
         ],
         series: [
             {
-                name: '红包金额',
-                type: 'scatter',
-                data: data.scatter.map(d => [d[0], d[1]]),
-                symbolSize: 8,
+                name: '每日红包总额',
+                type: 'bar',
+                data: data.daily_summary.map(d => d.total_amount),
                 itemStyle: {
                     color: '#ef4444'
                 }
             },
             {
-                name: '累计金额',
+                name: '累计红包金额',
                 type: 'line',
-                yAxisIndex: 1,
+                yAxisIndex: 0,
                 data: data.cumulative.map(d => d.cumulative_amount),
                 smooth: true,
                 itemStyle: {
                     color: '#dc2626'
+                }
+            },
+            {
+                name: '红包个数',
+                type: 'line',
+                yAxisIndex: 1,
+                data: data.daily_summary.map(d => d.count),
+                smooth: true,
+                itemStyle: {
+                    color: '#f59e0b'
                 }
             }
         ]
     };
     
     charts.redpacket.setOption(option);
+}
+
+// Update user redpacket ranking chart (without parentheses in title)
+function updateUserRedpacketChart(data) {
+    if (!data || data.length === 0) {
+        const option = {
+            title: {
+                text: '用户红包收入排行',
+                left: 'center'
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'value',
+                name: '累计红包金额 (¥)'
+            },
+            yAxis: {
+                type: 'category',
+                data: []
+            },
+            series: [{
+                name: '累计红包金额',
+                type: 'bar',
+                data: [],
+                itemStyle: {
+                    color: '#f59e0b'
+                }
+            }]
+        };
+        charts.userRedpacket.setOption(option);
+        return;
+    }
+    
+    const option = {
+        title: {
+            text: '用户红包收入排行',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'shadow'
+            },
+            formatter: function(params) {
+                const data = params[0];
+                return `${data.name}<br/>累计红包: ¥${data.value.toFixed(2)}<br/>红包个数: ${data.data.redpacket_count}`;
+            }
+        },
+        grid: {
+            left: '3%',
+            right: '10%',
+            bottom: '3%',
+            containLabel: true
+        },
+        xAxis: {
+            type: 'value',
+            name: '累计红包金额 (¥)'
+        },
+        yAxis: {
+            type: 'category',
+            data: data.slice(0, 20).map(d => d.screen_name || d.from_uid).reverse(),
+            axisLabel: {
+                formatter: function(value) {
+                    return value; // Don't truncate usernames
+                }
+            }
+        },
+        series: [{
+            name: '累计红包金额',
+            type: 'bar',
+            data: data.slice(0, 20).map(d => ({
+                value: d.total_redpacket_amount,
+                redpacket_count: d.redpacket_count
+            })).reverse(),
+            itemStyle: {
+                color: '#f59e0b'
+            }
+        }]
+    };
+    
+    charts.userRedpacket.setOption(option);
 }
 
 // Update message types table (without example column)
