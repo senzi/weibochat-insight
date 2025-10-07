@@ -573,14 +573,14 @@ function updateSourceRatioChart(data) {
     charts.sourceRatio.setOption(option);
 }
 
-// Update token histogram chart with proper bin handling (limit to 300)
+// Update token histogram chart with proper bin handling (limit to 100)
 function updateTokenHistogramChart(data) {
     const contentData = data.content_len;
     const tokenData = data.token_count;
     
-    // Create proper bins and ensure no gaps, limit to 300
-    const contentBins = createProperBins(contentData, 300);
-    const tokenBins = createProperBins(tokenData, 300);
+    // Create proper bins and ensure no gaps, limit to 100
+    const contentBins = createProperBins(contentData, 100);
+    const tokenBins = createProperBins(tokenData, 100);
     
     const option = {
         title: {

@@ -240,7 +240,7 @@ def api_message_types():
 
 @app.route('/api/token_histogram')
 def api_token_histogram():
-    """Return token length distribution with both content_len and token_count (limit to 300)"""
+    """Return token length distribution with both content_len and token_count (limit to 100)"""
     def compute():
         df = data_cache['df']
         text_messages = df[df['is_text']]
@@ -248,26 +248,26 @@ def api_token_histogram():
         if len(text_messages) == 0:
             return {'content_len': [], 'token_count': []}
         
-        # Content length histogram - limit to 300, with 300+ category
+        # Content length histogram - limit to 100, with 100+ category
         content_lengths = text_messages['content_len'].values
-        max_content = min(int(max(content_lengths)), 300)
+        max_content = min(int(max(content_lengths)), 100)
         
-        # Create bins up to 300, with last bin being 300+
+        # Create bins up to 100, with last bin being 100+
         content_bins = list(range(0, max_content + 10, 10))
-        if max_content < 300:
-            content_bins.append(300)  # Add 300 as upper bound
+        if max_content < 100:
+            content_bins.append(100)  # Add 100 as upper bound
             
         content_hist, _ = pd.cut(content_lengths, bins=content_bins, right=False, retbins=True)
         content_hist_counts = content_hist.value_counts().sort_index()
         
         content_result = []
         for interval, count in content_hist_counts.items():
-            # Handle the last interval (300+)
-            if interval.right >= 300:
+            # Handle the last interval (100+)
+            if interval.right >= 100:
                 content_result.append({
-                    'range': '300+',
+                    'range': '100+',
                     'count': int(count),
-                    'min': 300,
+                    'min': 100,
                     'max': int(max(content_lengths))
                 })
             else:
@@ -278,28 +278,28 @@ def api_token_histogram():
                     'max': int(interval.right)
                 })
         
-        # Token count histogram - also limit to 300
+        # Token count histogram - also limit to 100
         token_messages = text_messages[text_messages['token_count'].notna()]
         if len(token_messages) > 0:
             token_counts = token_messages['token_count'].values
-            max_token = min(int(max(token_counts)), 300)
+            max_token = min(int(max(token_counts)), 100)
             
-            # Create bins up to 300, with last bin being 300+
+            # Create bins up to 100, with last bin being 100+
             token_bins = list(range(0, max_token + 10, 10))
-            if max_token < 300:
-                token_bins.append(300)  # Add 300 as upper bound
+            if max_token < 100:
+                token_bins.append(100)  # Add 100 as upper bound
                 
             token_hist, _ = pd.cut(token_counts, bins=token_bins, right=False, retbins=True)
             token_hist_counts = token_hist.value_counts().sort_index()
             
             token_result = []
             for interval, count in token_hist_counts.items():
-                # Handle the last interval (300+)
-                if interval.right >= 300:
+                # Handle the last interval (100+)
+                if interval.right >= 100:
                     token_result.append({
-                        'range': '300+',
+                        'range': '100+',
                         'count': int(count),
-                        'min': 300,
+                        'min': 100,
                         'max': int(max(token_counts))
                     })
                 else:
