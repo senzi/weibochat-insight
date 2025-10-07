@@ -288,10 +288,13 @@ def api_token_histogram():
 
 @app.route('/api/redpackets')
 def api_redpackets():
-    """Return redpacket statistics over time"""
+    """Return redpacket statistics over time (filtering out amounts > 50)"""
     def compute():
         df = data_cache['df']
         redpacket_data = df[df['is_redpacket']].copy()
+        
+        # Filter out redpacket amounts greater than 50
+        redpacket_data = redpacket_data[redpacket_data['redpacket_amount'] <= 50]
         
         if len(redpacket_data) == 0:
             return {'scatter': [], 'cumulative': []}

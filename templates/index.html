@@ -21,8 +21,16 @@
     <link rel="stylesheet" href="/static/css/style.css">
     
     <style>
+        * {
+            font-family: 'LXGWWenKai', 'LXGW WenKai', sans-serif !important;
+        }
+        
         body {
-            font-family: 'LXGWWenKai', sans-serif;
+            font-family: 'LXGWWenKai', 'LXGW WenKai', sans-serif !important;
+        }
+        
+        .echarts {
+            font-family: 'LXGWWenKai', 'LXGW WenKai', sans-serif !important;
         }
     </style>
 </head>
@@ -90,27 +98,37 @@
                 <p class="text-gray-600">基于选定数据文件的深度分析</p>
             </div>
 
-            <!-- Summary Cards -->
-            <div id="summary-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <div class="text-sm font-medium text-gray-500">总消息数</div>
-                    <div id="total-messages" class="text-2xl font-bold text-blue-600">-</div>
+            <!-- Summary Cards - Rearranged Layout -->
+            <div class="space-y-4 mb-8">
+                <!-- First Row -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <div class="text-sm font-medium text-gray-500">总消息数</div>
+                        <div id="total-messages" class="text-2xl font-bold text-blue-600">-</div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <div class="text-sm font-medium text-gray-500">总红包金额</div>
+                        <div id="total-redpacket" class="text-2xl font-bold text-red-600">-</div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <div class="text-sm font-medium text-gray-500">平均消息长度</div>
+                        <div id="avg-content-length" class="text-2xl font-bold text-purple-600">-</div>
+                    </div>
                 </div>
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <div class="text-sm font-medium text-gray-500">总用户数</div>
-                    <div id="total-users" class="text-2xl font-bold text-green-600">-</div>
-                </div>
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <div class="text-sm font-medium text-gray-500">总红包金额</div>
-                    <div id="total-redpacket" class="text-2xl font-bold text-red-600">-</div>
-                </div>
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <div class="text-sm font-medium text-gray-500">平均消息长度</div>
-                    <div id="avg-content-length" class="text-2xl font-bold text-purple-600">-</div>
-                </div>
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <div class="text-sm font-medium text-gray-500">平均消息tokens</div>
-                    <div id="avg-token-length" class="text-2xl font-bold text-orange-600">-</div>
+                
+                <!-- Second Row -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <div class="text-sm font-medium text-gray-500">总用户数</div>
+                        <div id="total-users" class="text-2xl font-bold text-green-600">-</div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <!-- Empty space for alignment -->
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <div class="text-sm font-medium text-gray-500">平均消息tokens</div>
+                        <div id="avg-token-length" class="text-2xl font-bold text-orange-600">-</div>
+                    </div>
                 </div>
             </div>
 

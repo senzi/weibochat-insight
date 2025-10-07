@@ -401,7 +401,7 @@ function updateHourlyHeatmap(data) {
         visualMap: {
             min: 0,
             max: Math.max(...data.map(d => d[2])),
-            calculable: true,
+            calculable: false, // Remove range control
             orient: 'horizontal',
             left: 'center',
             bottom: '5%',
@@ -563,12 +563,19 @@ function updateSourceRatioChart(data) {
     charts.sourceRatio.setOption(option);
 }
 
-// Update token histogram chart with log scale
+// Update token histogram chart with adaptive y-axis
 function updateTokenHistogramChart(data) {
     const contentData = data.content_len;
     const tokenData = data.token_count;
     
-    // Use log scale for better visualization of long-tail distribution
+    // Find max values for adaptive scaling
+    const maxContentCount = contentData.length > 0 ? Math.max(...contentData.map(d => d.count)) : 1;
+    const maxTokenCount = tokenData.length > 0 ? Math.max(...tokenData.map(d => d.count)) : 1;
+    const maxCount = Math.max(maxContentCount, maxTokenCount);
+    
+    // Calculate appropriate y-axis max with some padding
+    const yAxisMax = Math.ceil(maxCount * 1.2);
+    
     const option = {
         title: {
             text: '消息长度分布',
@@ -599,7 +606,9 @@ function updateTokenHistogramChart(data) {
             type: 'value',
             name: '消息数量',
             type: 'log',
-            logBase: 10
+            logBase: 10,
+            min: 1, // Set minimum to 1 for log scale
+            max: Math.max(10, yAxisMax) // Ensure at least 10 for visibility
         },
         series: [
             {
@@ -664,11 +673,11 @@ function getLogScaleData(data) {
     return result;
 }
 
-// Update redpacket chart (fix cumulative amount calculation)
+// Update redpacket chart (with filtered data)
 function updateRedpacketChart(data) {
     const option = {
         title: {
-            text: '红包统计',
+            text: '红包统计 (过滤大于50元的红包)',
             left: 'center'
         },
         tooltip: {
@@ -735,11 +744,6 @@ function updateRedpacketChart(data) {
 // Update message types table (without example column)
 function updateMessageTypesTable(data) {
     const tbody = document.getElementById('message-types-tbody');
-    const examples = {
-        'text': '这是一条测试消息',
-        'image': '[图片消息]',
-        'redpacket': '0.52元，@用户名'
-    };
     
     tbody.innerHTML = '';
     
