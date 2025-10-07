@@ -208,3 +208,5 @@ __marimo__/
 
 # Project
 data/*.ndjson
+data/processed/*.ndjson
+deepseek_v3_tokenizer
