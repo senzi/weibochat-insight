@@ -210,3 +210,4 @@ __marimo__/
 data/*.ndjson
 data/processed/*.ndjson
 deepseek_v3_tokenizer
+cache
