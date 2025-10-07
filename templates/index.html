@@ -8,6 +8,9 @@
     <!-- TailwindCSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- Custom Font -->
+    <link rel="stylesheet" href="//chinese-fonts-cdn.deno.dev/packages/lxgwwenkai/dist/LXGWWenKai-Regular/result.css">
+    
     <!-- ECharts -->
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     
@@ -16,6 +19,12 @@
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/css/style.css">
+    
+    <style>
+        body {
+            font-family: 'LXGWWenKai', sans-serif;
+        }
+    </style>
 </head>
 <body class="bg-gray-50">
     <div id="dashboard" class="max-w-4xl mx-auto p-6">
@@ -57,107 +66,126 @@
             </div>
         </div>
 
-        <!-- Summary Cards -->
-        <div id="summary-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-            <div class="bg-white rounded-lg shadow-sm p-6">
-                <div class="text-sm font-medium text-gray-500">总消息数</div>
-                <div id="total-messages" class="text-2xl font-bold text-blue-600">-</div>
-            </div>
-            <div class="bg-white rounded-lg shadow-sm p-6">
-                <div class="text-sm font-medium text-gray-500">总用户数</div>
-                <div id="total-users" class="text-2xl font-bold text-green-600">-</div>
-            </div>
-            <div class="bg-white rounded-lg shadow-sm p-6">
-                <div class="text-sm font-medium text-gray-500">总红包金额</div>
-                <div id="total-redpacket" class="text-2xl font-bold text-red-600">-</div>
-            </div>
-            <div class="bg-white rounded-lg shadow-sm p-6">
-                <div class="text-sm font-medium text-gray-500">平均消息长度</div>
-                <div id="avg-content-length" class="text-2xl font-bold text-purple-600">-</div>
-            </div>
-            <div class="bg-white rounded-lg shadow-sm p-6">
-                <div class="text-sm font-medium text-gray-500">平均消息tokens</div>
-                <div id="avg-token-length" class="text-2xl font-bold text-orange-600">-</div>
+        <!-- Custom Title Input -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="text-center">
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">报告标题</h3>
+                <input 
+                    type="text" 
+                    id="reportTitle" 
+                    class="text-2xl font-bold text-center border-b-2 border-gray-300 focus:border-blue-500 outline-none bg-transparent px-4 py-2 w-full max-w-md"
+                    placeholder="点击输入群聊名称"
+                    value="未命名群聊"
+                >
+                <p class="text-sm text-gray-600 mt-2">《<span id="reportTitleDisplay">未命名群聊</span>》群聊分析报告</p>
             </div>
         </div>
 
-        <!-- Charts - Single Column Layout -->
-        
-        <!-- Daily Trend Chart -->
-        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">日度趋势</h3>
-            <div id="daily-trend-chart" style="height: 400px;"></div>
-        </div>
-
-        <!-- Hourly Heatmap -->
-        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">周×时段热力图</h3>
-            <div id="hourly-heatmap-chart" style="height: 400px;"></div>
-        </div>
-
-        <!-- Top Users Chart -->
-        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Top 用户排行</h3>
-            <div id="top-users-chart" style="height: 500px;"></div>
-        </div>
-
-        <!-- Message Types Chart -->
-        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">消息类型占比</h3>
-            <div id="message-types-chart" style="height: 400px;"></div>
-        </div>
-
-        <!-- Source Ratio Chart -->
-        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Web vs Mobile 使用占比</h3>
-            <div id="source-ratio-chart" style="height: 400px;"></div>
-        </div>
-
-        <!-- Token Histogram Chart -->
-        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">消息长度分布</h3>
-            <div id="token-histogram-chart" style="height: 400px;"></div>
-        </div>
-
-        <!-- Redpacket Chart -->
-        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">红包统计</h3>
-            <div id="redpacket-chart" style="height: 400px;"></div>
-        </div>
-
-        <!-- Message Types Proportion -->
-        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">消息类型比例</h3>
+        <!-- Snapshot Content Wrapper -->
+        <div id="snapshot-content" class="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg shadow-lg p-6">
             
-            <!-- Colored proportion bar -->
-            <div class="mb-4">
-                <div class="flex h-6 rounded overflow-hidden">
-                    <div id="text-proportion-bar" class="bg-blue-500 flex items-center justify-center text-white text-xs font-medium"></div>
-                    <div id="image-proportion-bar" class="bg-green-500 flex items-center justify-center text-white text-xs font-medium"></div>
-                    <div id="redpacket-proportion-bar" class="bg-yellow-500 flex items-center justify-center text-white text-xs font-medium"></div>
+            <!-- Report Title -->
+            <div class="text-center mb-8">
+                <h2 class="text-4xl font-bold text-gray-800 mb-2">《<span class="report-title-span">未命名群聊</span>》群聊分析报告</h2>
+                <p class="text-gray-600">基于选定数据文件的深度分析</p>
+            </div>
+
+            <!-- Summary Cards -->
+            <div id="summary-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="text-sm font-medium text-gray-500">总消息数</div>
+                    <div id="total-messages" class="text-2xl font-bold text-blue-600">-</div>
                 </div>
-                <div class="flex justify-between mt-2 text-sm text-gray-600">
-                    <span>文本</span>
-                    <span>图片</span>
-                    <span>红包感谢</span>
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="text-sm font-medium text-gray-500">总用户数</div>
+                    <div id="total-users" class="text-2xl font-bold text-green-600">-</div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="text-sm font-medium text-gray-500">总红包金额</div>
+                    <div id="total-redpacket" class="text-2xl font-bold text-red-600">-</div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="text-sm font-medium text-gray-500">平均消息长度</div>
+                    <div id="avg-content-length" class="text-2xl font-bold text-purple-600">-</div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="text-sm font-medium text-gray-500">平均消息tokens</div>
+                    <div id="avg-token-length" class="text-2xl font-bold text-orange-600">-</div>
                 </div>
             </div>
+
+            <!-- Charts - Single Column Layout -->
             
-            <div class="overflow-x-auto">
-                <table id="message-types-table" class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">消息类型</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">数量</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">占比</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">示例</th>
-                        </tr>
-                    </thead>
-                    <tbody id="message-types-tbody" class="bg-white divide-y divide-gray-200">
-                        <!-- Data will be populated by JavaScript -->
-                    </tbody>
-                </table>
+            <!-- Daily Trend Chart -->
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">日度趋势</h3>
+                <div id="daily-trend-chart" style="height: 400px;"></div>
             </div>
+
+            <!-- Hourly Heatmap -->
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">周×时段热力图</h3>
+                <div id="hourly-heatmap-chart" style="height: 400px;"></div>
+            </div>
+
+            <!-- Top Users Chart -->
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Top 用户排行</h3>
+                <div id="top-users-chart" style="height: 500px;"></div>
+            </div>
+
+            <!-- Message Types Proportion (Replaces Message Types Chart) -->
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">消息类型比例</h3>
+                
+                <!-- Colored proportion bar -->
+                <div class="mb-4">
+                    <div class="flex h-6 rounded overflow-hidden">
+                        <div id="text-proportion-bar" class="bg-blue-500 flex items-center justify-center text-white text-xs font-medium"></div>
+                        <div id="image-proportion-bar" class="bg-green-500 flex items-center justify-center text-white text-xs font-medium"></div>
+                        <div id="redpacket-proportion-bar" class="bg-yellow-500 flex items-center justify-center text-white text-xs font-medium"></div>
+                    </div>
+                    <div class="flex justify-between mt-2 text-sm text-gray-600">
+                        <span>文本</span>
+                        <span>图片</span>
+                        <span>红包感谢</span>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table id="message-types-table" class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">消息类型</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">数量</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">占比</th>
+                            </tr>
+                        </thead>
+                        <tbody id="message-types-tbody" class="bg-white divide-y divide-gray-200">
+                            <!-- Data will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Source Ratio Chart -->
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Web vs Mobile 使用占比</h3>
+                <div id="source-ratio-chart" style="height: 400px;"></div>
+            </div>
+
+            <!-- Token Histogram Chart -->
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">消息长度分布</h3>
+                <div id="token-histogram-chart" style="height: 400px;"></div>
+            </div>
+
+            <!-- Redpacket Chart -->
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">红包统计</h3>
+                <div id="redpacket-chart" style="height: 400px;"></div>
+            </div>
+
         </div>
 
         <!-- User Trend Modal -->

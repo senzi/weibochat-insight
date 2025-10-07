@@ -8,10 +8,19 @@ let charts = {};
 let userTrendChart = null;
 let availableFiles = [];
 let selectedFiles = [];
+let reportTitle = '未命名群聊';
 
 // Initialize dashboard
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Initializing WeiboChat Insight Dashboard...');
+    
+    // Load saved title from localStorage
+    const savedTitle = localStorage.getItem('reportTitle');
+    if (savedTitle) {
+        reportTitle = savedTitle;
+        document.getElementById('reportTitle').value = reportTitle;
+        updateReportTitle();
+    }
     
     // Initialize charts
     initCharts();
@@ -33,9 +42,6 @@ function initCharts() {
     
     // Top users chart
     charts.topUsers = echarts.init(document.getElementById('top-users-chart'));
-    
-    // Message types chart
-    charts.messageTypes = echarts.init(document.getElementById('message-types-chart'));
     
     // Source ratio chart
     charts.sourceRatio = echarts.init(document.getElementById('source-ratio-chart'));
@@ -77,6 +83,36 @@ function setupEventListeners() {
     document.getElementById('selectAllBtn').addEventListener('click', selectAllFiles);
     document.getElementById('deselectAllBtn').addEventListener('click', deselectAllFiles);
     document.getElementById('applySelectionBtn').addEventListener('click', applyFileSelection);
+    
+    // Report title input
+    const reportTitleInput = document.getElementById('reportTitle');
+    reportTitleInput.addEventListener('blur', saveReportTitle);
+    reportTitleInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            saveReportTitle();
+            this.blur();
+        }
+    });
+    reportTitleInput.addEventListener('input', updateReportTitle);
+}
+
+// Save report title
+function saveReportTitle() {
+    const input = document.getElementById('reportTitle');
+    reportTitle = input.value.trim() || '未命名群聊';
+    localStorage.setItem('reportTitle', reportTitle);
+    updateReportTitle();
+}
+
+// Update report title display
+function updateReportTitle() {
+    const input = document.getElementById('reportTitle');
+    const display = document.getElementById('reportTitleDisplay');
+    const spans = document.querySelectorAll('.report-title-span');
+    
+    reportTitle = input.value.trim() || '未命名群聊';
+    display.textContent = reportTitle;
+    spans.forEach(span => span.textContent = reportTitle);
 }
 
 // Load available files
@@ -229,12 +265,11 @@ async function loadAllData() {
         updateDailyTrendChart(dailyData);
         updateHourlyHeatmap(hourlyData);
         updateTopUsersChart(topUsersData);
-        updateMessageTypesChart(messageTypesData);
+        updateMessageTypesProportionBar(messageTypesData);
         updateSourceRatioChart(sourceRatioData);
         updateTokenHistogramChart(tokenHistogramData);
         updateRedpacketChart(redpacketData);
         updateMessageTypesTable(messageTypesData);
-        updateMessageTypesProportionBar(messageTypesData);
         
     } catch (error) {
         console.error('Error loading data:', error);
@@ -251,7 +286,7 @@ function updateSummaryCards(data) {
     document.getElementById('avg-token-length').textContent = data.avg_token_length.toFixed(1);
 }
 
-// Update daily trend chart
+// Update daily trend chart (without range controls)
 function updateDailyTrendChart(data) {
     const option = {
         title: {
@@ -271,7 +306,7 @@ function updateDailyTrendChart(data) {
         grid: {
             left: '3%',
             right: '4%',
-            bottom: '15%',
+            bottom: '10%',
             containLabel: true
         },
         xAxis: {
@@ -296,10 +331,6 @@ function updateDailyTrendChart(data) {
         dataZoom: [
             {
                 type: 'inside',
-                start: 0,
-                end: 100
-            },
-            {
                 start: 0,
                 end: 100
             }
@@ -333,7 +364,7 @@ function updateDailyTrendChart(data) {
     charts.dailyTrend.setOption(option);
 }
 
-// Update hourly heatmap
+// Update hourly heatmap (without range controls)
 function updateHourlyHeatmap(data) {
     const hours = Array.from({length: 24}, (_, i) => i);
     const weekdays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
@@ -397,7 +428,7 @@ function updateHourlyHeatmap(data) {
     charts.hourlyHeatmap.setOption(option);
 }
 
-// Update top users chart
+// Update top users chart (fix text display issue)
 function updateTopUsersChart(data) {
     const option = {
         title: {
@@ -412,7 +443,7 @@ function updateTopUsersChart(data) {
         },
         grid: {
             left: '3%',
-            right: '4%',
+            right: '10%',
             bottom: '3%',
             containLabel: true
         },
@@ -449,54 +480,7 @@ function updateTopUsersChart(data) {
     });
 }
 
-// Update message types chart
-function updateMessageTypesChart(data) {
-    const option = {
-        title: {
-            text: '消息类型占比',
-            left: 'center'
-        },
-        tooltip: {
-            trigger: 'item',
-            formatter: '{a} <br/>{b}: {c} ({d}%)'
-        },
-        legend: {
-            orient: 'vertical',
-            left: 'left',
-            data: ['文本', '图片', '红包感谢']
-        },
-        series: [{
-            name: '消息类型',
-            type: 'pie',
-            radius: '50%',
-            data: [
-                {value: data.counts.text, name: `文本 (${data.percentages.text}%)`},
-                {value: data.counts.image, name: `图片 (${data.percentages.image}%)`},
-                {value: data.counts.redpacket, name: `红包感谢 (${data.percentages.redpacket}%)`}
-            ],
-            emphasis: {
-                itemStyle: {
-                    shadowBlur: 10,
-                    shadowOffsetX: 0,
-                    shadowColor: 'rgba(0, 0, 0, 0.5)'
-                }
-            },
-            itemStyle: {
-                color: function(params) {
-                    const colors = ['#3b82f6', '#10b981', '#f59e0b'];
-                    return colors[params.dataIndex];
-                }
-            },
-            label: {
-                formatter: '{b}'
-            }
-        }]
-    };
-    
-    charts.messageTypes.setOption(option);
-}
-
-// Update message types proportion bar
+// Update message types proportion bar (replaces chart)
 function updateMessageTypesProportionBar(data) {
     const total = data.counts.text + data.counts.image + data.counts.redpacket;
     const textPercent = (data.counts.text / total * 100).toFixed(1);
@@ -579,21 +563,12 @@ function updateSourceRatioChart(data) {
     charts.sourceRatio.setOption(option);
 }
 
-// Update token histogram chart
+// Update token histogram chart with log scale
 function updateTokenHistogramChart(data) {
     const contentData = data.content_len;
     const tokenData = data.token_count;
     
-    // Find common ranges for both datasets
-    const maxRange = Math.max(
-        contentData.length > 0 ? Math.max(...contentData.map(d => d.max)) : 0,
-        tokenData.length > 0 ? Math.max(...tokenData.map(d => d.max)) : 0
-    );
-    
-    // Create adaptive bins
-    const binSize = maxRange > 200 ? 20 : 10;
-    const bins = listRange(0, maxRange + binSize, binSize);
-    
+    // Use log scale for better visualization of long-tail distribution
     const option = {
         title: {
             text: '消息长度分布',
@@ -617,18 +592,20 @@ function updateTokenHistogramChart(data) {
         },
         xAxis: {
             type: 'category',
-            data: bins.slice(0, -1).map((bin, i) => `${bin}-${bins[i+1]}`),
-            name: '长度区间'
+            data: getLogScaleBins(contentData, tokenData),
+            name: '长度区间 (对数尺度)'
         },
         yAxis: {
             type: 'value',
-            name: '消息数量'
+            name: '消息数量',
+            type: 'log',
+            logBase: 10
         },
         series: [
             {
                 name: '字符长度',
                 type: 'bar',
-                data: contentData.map(d => d.count),
+                data: getLogScaleData(contentData),
                 itemStyle: {
                     color: '#3b82f6'
                 }
@@ -636,7 +613,7 @@ function updateTokenHistogramChart(data) {
             {
                 name: 'Token数量',
                 type: 'bar',
-                data: tokenData.map(d => d.count),
+                data: getLogScaleData(tokenData),
                 itemStyle: {
                     color: '#10b981'
                 }
@@ -647,16 +624,47 @@ function updateTokenHistogramChart(data) {
     charts.tokenHistogram.setOption(option);
 }
 
-// Helper function to create range
-function listRange(start, end, step) {
-    const result = [];
-    for (let i = start; i < end; i += step) {
-        result.push(i);
+// Helper function to create log scale bins
+function getLogScaleBins(contentData, tokenData) {
+    const maxContent = contentData.length > 0 ? Math.max(...contentData.map(d => d.max)) : 100;
+    const maxToken = tokenData.length > 0 ? Math.max(...tokenData.map(d => d.max)) : 100;
+    const maxVal = Math.max(maxContent, maxToken);
+    
+    // Create log scale bins
+    const bins = [];
+    let current = 1;
+    while (current < maxVal) {
+        bins.push(`${current}-${current * 2}`);
+        current *= 2;
     }
+    return bins;
+}
+
+// Helper function to aggregate data into log scale bins
+function getLogScaleData(data) {
+    if (data.length === 0) return [];
+    
+    const result = [];
+    let current = 1;
+    let dataIndex = 0;
+    
+    while (current < 10000 && dataIndex < data.length) { // reasonable upper limit
+        let count = 0;
+        const next = current * 2;
+        
+        while (dataIndex < data.length && data[dataIndex].min < next) {
+            count += data[dataIndex].count;
+            dataIndex++;
+        }
+        
+        result.push(count);
+        current = next;
+    }
+    
     return result;
 }
 
-// Update redpacket chart
+// Update redpacket chart (fix cumulative amount calculation)
 function updateRedpacketChart(data) {
     const option = {
         title: {
@@ -681,7 +689,7 @@ function updateRedpacketChart(data) {
         },
         xAxis: {
             type: 'category',
-            data: data.scatter.map(d => d[0]),
+            data: data.cumulative.map(d => d.date),
             axisLabel: {
                 rotate: 45
             }
@@ -702,7 +710,7 @@ function updateRedpacketChart(data) {
             {
                 name: '红包金额',
                 type: 'scatter',
-                data: data.scatter.map(d => d[1]),
+                data: data.scatter.map(d => [d[0], d[1]]),
                 symbolSize: 8,
                 itemStyle: {
                     color: '#ef4444'
@@ -724,7 +732,7 @@ function updateRedpacketChart(data) {
     charts.redpacket.setOption(option);
 }
 
-// Update message types table
+// Update message types table (without example column)
 function updateMessageTypesTable(data) {
     const tbody = document.getElementById('message-types-tbody');
     const examples = {
@@ -747,7 +755,6 @@ function updateMessageTypesTable(data) {
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${typeNames[type]}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${count.toLocaleString()}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${data.percentages[type]}%</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${examples[type]}</td>
         `;
         
         tbody.appendChild(row);
@@ -822,11 +829,11 @@ async function downloadDashboard() {
         button.disabled = true;
         button.innerHTML = '<span>⏳</span><span>生成中...</span>';
         
-        const el = document.querySelector('#dashboard');
+        const el = document.querySelector('#snapshot-content');
         const result = await snapdom(el);
         await result.download({ 
             format: 'jpg', 
-            filename: `weibochat_dashboard_${new Date().toISOString().slice(0, 10)}` 
+            filename: `weibochat_report_${reportTitle}_${new Date().toISOString().slice(0, 10)}` 
         });
         
         button.disabled = false;
